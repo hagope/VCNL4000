@@ -10,7 +10,8 @@
 
 
 
-#include <Wire.h>
+//#include <Wire.h>
+#include <TinyWireM.h> //use Wire.h if you are using Arduino Uno and the like
 
 // the i2c address
 #define VCNL4000_ADDRESS 0x13
@@ -34,37 +35,43 @@
 #define VCNL4000_MEASUREPROXIMITY 0x08
 #define VCNL4000_AMBIENTREADY 0x40
 #define VCNL4000_PROXIMITYREADY 0x20
-  
-void setup() {
-  Serial.begin(9600);
 
-  Serial.println("VCNL");
-  Wire.begin();
+// Adjust to your preferences:
+int motorPin = 4;
+int delayTime = 3000;
+int proxMax = 1995;
+
+void setup() {
+//  Serial.begin();
+//  while (!Serial);
+  pinMode(motorPin, OUTPUT);
+//  Serial.println("VCNL");
+  TinyWireM.begin(); //replace TinyWireM with Wire on all calls if using Wire.h
 
   uint8_t rev = read8(VCNL4000_PRODUCTID);
   
   if ((rev & 0xF0) != 0x10) {
-    Serial.println("Sensor not found :(");
+//    Serial.println("Sensor not found :(");
     while (1);
   }
     
   
   write8(VCNL4000_IRLED, 20);        // set to 20 * 10mA = 200mA
-  Serial.print("IR LED current = ");
-  Serial.print(read8(VCNL4000_IRLED) * 10, DEC);
-  Serial.println(" mA");
+//  Serial.print("IR LED current = ");
+//  Serial.print(read8(VCNL4000_IRLED) * 10, DEC);
+//  Serial.println(" mA");
   
   //write8(VCNL4000_SIGNALFREQ, 3);
-  Serial.print("Proximity measurement frequency = ");
+//  Serial.print("Proximity measurement frequency = ");
   uint8_t freq = read8(VCNL4000_SIGNALFREQ);
-  if (freq == VCNL4000_3M125) Serial.println("3.125 MHz");
-  if (freq == VCNL4000_1M5625) Serial.println("1.5625 MHz");
-  if (freq == VCNL4000_781K25) Serial.println("781.25 KHz");
-  if (freq == VCNL4000_390K625) Serial.println("390.625 KHz");
+//  if (freq == VCNL4000_3M125) Serial.println("3.125 MHz");
+//  if (freq == VCNL4000_1M5625) Serial.println("1.5625 MHz");
+//  if (freq == VCNL4000_781K25) Serial.println("781.25 KHz");
+//  if (freq == VCNL4000_390K625) Serial.println("390.625 KHz");
   
   write8(VCNL4000_PROXINITYADJUST, 0x81);
-  Serial.print("Proximity adjustment register = ");
-  Serial.println(read8(VCNL4000_PROXINITYADJUST), HEX);
+//  Serial.print("Proximity adjustment register = ");
+//  Serial.println(read8(VCNL4000_PROXINITYADJUST), HEX);
   
   // arrange for continuous conversion
   //write8(VCNL4000_AMBIENTPARAMETER, 0x89);
@@ -79,10 +86,10 @@ uint16_t readProximity() {
     if (result & VCNL4000_PROXIMITYREADY) {
       return read16(VCNL4000_PROXIMITYDATA);
     }
+    
     delay(1);
   }
 }
-
 
 
 void loop() {
@@ -95,15 +102,21 @@ void loop() {
     //Serial.print("Ready = 0x"); Serial.println(result, HEX);
     if ((result & VCNL4000_AMBIENTREADY)&&(result & VCNL4000_PROXIMITYREADY)) {
 
-      Serial.print("Ambient = ");
-      Serial.print(read16(VCNL4000_AMBIENTDATA));
-      Serial.print("\t\tProximity = ");
-      Serial.println(read16(VCNL4000_PROXIMITYDATA));
+//      Serial.print("Ambient = ");
+//      Serial.print(read16(VCNL4000_AMBIENTDATA));
+//      Serial.print("\t\tProximity = ");
+      int prox = read16(VCNL4000_PROXIMITYDATA);
+//      Serial.println(prox);
+      if(prox >= proxMax) {
+        digitalWrite(motorPin, HIGH);
+        delay(delayTime);
+      } else {
+        digitalWrite(motorPin, LOW);
+      }
       break;
     }
     delay(10);
   }
-  
    delay(100);
  }
 
@@ -112,23 +125,23 @@ uint8_t read8(uint8_t address)
 {
   uint8_t data;
 
-  Wire.beginTransmission(VCNL4000_ADDRESS);
+  TinyWireM.beginTransmission(VCNL4000_ADDRESS);
 #if ARDUINO >= 100
-  Wire.write(address);
+  TinyWireM.write(address);
 #else
-  Wire.send(address);
+  TinyWireM.send(address);
 #endif
-  Wire.endTransmission();
+  TinyWireM.endTransmission();
 
   delayMicroseconds(170);  // delay required
 
-  Wire.requestFrom(VCNL4000_ADDRESS, 1);
-  while(!Wire.available());
+  TinyWireM.requestFrom(VCNL4000_ADDRESS, 1);
+  while(!TinyWireM.available());
 
 #if ARDUINO >= 100
-  return Wire.read();
+  return TinyWireM.read();
 #else
-  return Wire.receive();
+  return TinyWireM.receive();
 #endif
 }
 
@@ -138,21 +151,21 @@ uint16_t read16(uint8_t address)
 {
   uint16_t data;
 
-  Wire.beginTransmission(VCNL4000_ADDRESS);
+  TinyWireM.beginTransmission(VCNL4000_ADDRESS);
 #if ARDUINO >= 100
-  Wire.write(address);
+  TinyWireM.write(address);
 #else
-  Wire.send(address);
+  TinyWireM.send(address);
 #endif
-  Wire.endTransmission();
+  TinyWireM.endTransmission();
 
-  Wire.requestFrom(VCNL4000_ADDRESS, 2);
-  while(!Wire.available());
+  TinyWireM.requestFrom(VCNL4000_ADDRESS, 2);
+  while(!TinyWireM.available());
 #if ARDUINO >= 100
-  data = Wire.read();
+  data = TinyWireM.read();
   data <<= 8;
-  while(!Wire.available());
-  data |= Wire.read();
+  while(!TinyWireM.available());
+  data |= TinyWireM.read();
 #else
   data = Wire.receive();
   data <<= 8;
@@ -166,13 +179,13 @@ uint16_t read16(uint8_t address)
 // write 1 byte
 void write8(uint8_t address, uint8_t data)
 {
-  Wire.beginTransmission(VCNL4000_ADDRESS);
+  TinyWireM.beginTransmission(VCNL4000_ADDRESS);
 #if ARDUINO >= 100
-  Wire.write(address);
-  Wire.write(data);  
+  TinyWireM.write(address);
+  TinyWireM.write(data);  
 #else
-  Wire.send(address);
-  Wire.send(data);  
+  TinyWireM.send(address);
+  TinyWireM.send(data);  
 #endif
-  Wire.endTransmission();
+  TinyWireM.endTransmission();
 }
